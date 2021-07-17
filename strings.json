@@ -1,0 +1,33 @@
+{
+  "title": "GreenGo",
+  "config": {
+    "step": {
+      "user": {
+        "data": {
+          "zone_radius": "Zone radius (km)",
+          "zone_lat": "Zone latitude",
+          "zone_long": "Zone longitude",
+          "update_interval": "Update interval (min)"
+        }
+      }
+    },
+    "error": {
+      "unknown": "[%key:common::config_flow::error::unknown%]"
+    },
+    "abort": {
+      "already_configured": "[%key:common::config_flow::abort::already_configured_device%]"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "zone_radius": "Zone radius (km)",
+          "zone_lat": "Zone latitude",
+          "zone_long": "Zone longitude",
+          "update_interval": "Update interval (min)"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+    "config": {
+        "abort": {
+            "already_configured": "Device is already configured"
+        },
+        "error": {
+            "unknown": "Unexpected error"
+        },
+        "step": {
+            "user": {
+                "data": {
+                    "update_interval": "Update interval (min)",
+                    "zone_lat": "Zone latitude",
+                    "zone_long": "Zone longitude",
+                    "zone_radius": "Zone radius (km)"
+                }
+            }
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "data": {
+                    "update_interval": "Update interval (min)",
+                    "zone_lat": "Zone latitude",
+                    "zone_long": "Zone longitude",
+                    "zone_radius": "Zone radius (km)"
+                }
+            }
+        }
+    },
+    "title": "GreenGo"
+}

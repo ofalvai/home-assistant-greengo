@@ -1,0 +1,16 @@
+{
+  "domain": "greengo",
+  "name": "GreenGo",
+  "version": "1.0.0",
+  "config_flow": true,
+  "documentation": "https://www.home-assistant.io/integrations/greengo",
+  "requirements": [],
+  "ssdp": [],
+  "zeroconf": [],
+  "homekit": {},
+  "dependencies": [],
+  "codeowners": [
+    "@ofalvai"
+  ],
+  "iot_class": "cloud_polling"
+}
