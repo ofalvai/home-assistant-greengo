@@ -1,25 +1,15 @@
-from datetime import timedelta
 from typing import Optional, Mapping, Any
 
-import async_timeout
 import logging
 
 from homeassistant.components.device_tracker import SOURCE_TYPE_GPS
 from homeassistant.components.device_tracker.config_entry import TrackerEntity
 from homeassistant.const import LENGTH_KILOMETERS
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.typing import StateType
-from homeassistant.helpers.update_coordinator import CoordinatorEntity, DataUpdateCoordinator, UpdateFailed
-from .client import GreengoClient
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import *
-
-
-
-class ApiError(Exception):
-    pass
-
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -29,67 +19,40 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
 
     _LOGGER.debug("Setting up device_tracker with config data: %s", config_entry.data)
 
-    session = async_get_clientsession(hass)
-    client = GreengoClient(session)
+    coordinator = hass.data[DOMAIN][config_entry.entry_id][DATA_KEY_COORDINATOR]
+    entity_manager = GreengoEntityManager(async_add_entities, coordinator)
 
-    update_interval_min = config_entry.data[CONF_KEY_UPDATE_INTERVAL_MIN]
-    radius = config_entry.data[CONF_KEY_ZONE_RADIUS_KM]
-    latitude = config_entry.data[CONF_KEY_ZONE_LAT]
-    longitude = config_entry.data[CONF_KEY_ZONE_LONG]
+    def update_entities():
+        entity_manager.update_entities()
 
-    async def async_update_data():
-        try:
-            async with async_timeout.timeout(10):
-                vehicle_map = await data_handler.update_vehicles(radius, latitude, longitude)
-                return vehicle_map
-        except ApiError as err:
-            raise UpdateFailed(f"Error communicating with API: {err}")
-
-    coordinator = DataUpdateCoordinator(
-        hass,
-        _LOGGER,
-        name="GreenGo API",
-        update_method=async_update_data,
-        update_interval=timedelta(minutes=update_interval_min),
-    )
-
-    data_handler = GreengoDataHandler(client, async_add_entities, coordinator)
-
-    await coordinator.async_config_entry_first_refresh()
+    coordinator.async_add_listener(update_entities)
 
     async_add_entities(
-        GreengoSensor(coordinator, vehicle_id) for vehicle_id in coordinator.data.keys()
+        GreengoTrackerEntity(coordinator, vehicle_id) for vehicle_id in coordinator.data.keys()
     )
 
 
-class GreengoDataHandler:
-    def __init__(self, client: GreengoClient, async_add_entities, coordinator):
-        self.client = client
+class GreengoEntityManager:
+    def __init__(self, async_add_entities, coordinator):
         self.async_add_entities = async_add_entities
         self.coordinator = coordinator
         self.vehicles: dict = {}
 
-    async def update_vehicles(self, radius: int, latitude: float, longitude: float) -> dict:
-        vehicle_list = await self.client.vehicles_in_zone(radius, latitude, longitude)
-        _LOGGER.debug("Fetched %d vehicles from API", len(vehicle_list))
-        new_vehicles = {v["vehicle_id"]: v for v in vehicle_list}
+    def update_entities(self):
+        new_vehicles = self.coordinator.data
 
         to_add = set(new_vehicles) - set(self.vehicles)  # Diff of vehicle IDs
         if to_add and self.vehicles:
             _LOGGER.debug("Adding %d new vehicles after update: %s", len(to_add), to_add)
 
             self.async_add_entities(
-                GreengoSensor(self.coordinator, vehicle_id) for vehicle_id in to_add
+                GreengoTrackerEntity(self.coordinator, vehicle_id) for vehicle_id in to_add
             )
 
         self.vehicles = new_vehicles
 
-        return self.vehicles
 
-
-
-
-class GreengoSensor(CoordinatorEntity, TrackerEntity):
+class GreengoTrackerEntity(CoordinatorEntity, TrackerEntity):
     """Representation of a Sensor."""
 
     def __init__(self, coordinator, vehicle_id: str):
@@ -110,7 +73,7 @@ class GreengoSensor(CoordinatorEntity, TrackerEntity):
     @property
     def unique_id(self):
         """Return a unique, Home Assistant friendly identifier for this entity."""
-        return UNIQUE_ID_TEMPLATE.format(self.vehicle_id)
+        return UNIQUE_ID_TRACKER.format(self.vehicle_id)
 
     @property
     def name(self):
@@ -171,7 +134,6 @@ class GreengoSensor(CoordinatorEntity, TrackerEntity):
         return self.coordinator.data[self.vehicle_id]
 
     def _remove(self):
-        """Remove entity itself."""
+        """Remove itself when the vehicle is no longer present in the API response."""
 
         self.hass.async_create_task(self.async_remove(force_remove=True))
-
