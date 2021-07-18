@@ -1,0 +1,8 @@
+{
+  "name": "GreenGo",
+  "content_in_root": true,
+  "render_readme": true,
+  "domains": ["device_tracker", "sensor"],
+  "country": "hu",
+  "iot_class": ["Cloud Polling"]
+}
