@@ -19,3 +19,4 @@ CONF_DEFAULT_UPDATE_INTERVAL_MIN = 5
 
 UNIQUE_ID_TRACKER = "greengo_vehicle_{0}"
 UNIQUE_ID_SENSOR_VEHICLE_COUNT = "greengo_vehicle_count"
+UNIQUE_ID_SENSOR_CLOSEST = "greengo_closest_vehicle"

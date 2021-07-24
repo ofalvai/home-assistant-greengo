@@ -91,28 +91,26 @@ class GreengoTrackerEntity(CoordinatorEntity, TrackerEntity):
 
     @property
     def latitude(self) -> float:
-        """The latitude coordinate of the car."""
+        """The latitude coordinate of the vehicle."""
         return float(self._vehicle()["gps_lat"])
 
     @property
     def longitude(self) -> float:
-        """	The longitude coordinate of the car."""
+        """	The longitude coordinate of the vehicle."""
         return float(self._vehicle()["gps_long"])
 
     @property
     def source_type(self):
-        """Return the source type, eg gps or router, of the device."""
         return SOURCE_TYPE_GPS
 
     @property
     def icon(self):
-        """Return the icon to use in the frontend, if any."""
         return "mdi:car"
 
     @property
     def extra_state_attributes(self) -> Optional[Mapping[str, Any]]:
         return {
-            "Estimated range": self.state,
+            "Estimated range (km)": self.state,
             "Plate number": self._vehicle()["plate_number"],
             "Address": self.location_name
         }

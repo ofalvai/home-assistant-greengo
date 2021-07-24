@@ -37,6 +37,17 @@ class GreengoClient:
         return vehicle_distance <= radius
 
     @staticmethod
+    def nearest(vehicle_list, zone: tuple):
+        sorted_vehicles = sorted(
+            vehicle_list,
+            key=lambda v: GreengoClient._distance((float(v["gps_lat"]), float(v["gps_long"])), zone),
+        )
+        if sorted_vehicles is not None:
+            return sorted_vehicles[0]
+        else:
+            return None
+
+    @staticmethod
     def _distance(origin: tuple, destination: tuple) -> float:
         """Calculate the Haversine distance."""
 

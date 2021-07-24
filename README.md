@@ -4,8 +4,12 @@
 
 Custom component for [Home Assistant](https://homeassistant.io) that integrates [GreenGo](https://greengo.com) car-sharing data.
 
-![Screenshot 1](docs/screenshot1.jpg)
-![Screenshot 2](docs/screenshot2.jpg)
+![Screenshot of map](docs/screenshot1.jpg)
+
+| Sensors | Vehicle details |
+| ---- | ---- |
+| ![Screenshot of sensors](docs/screenshot4.jpg) | ![Screenshot of vehicle entity](docs/screenshot2.jpg) |
+
 
 ## Features
 
@@ -13,6 +17,7 @@ Custom component for [Home Assistant](https://homeassistant.io) that integrates 
 - Filter for vehicles in a zone with a given radius (around your home preferably)
 - Sensors
     - Number of vehicles in zone
+    - Closest vehicle
 
 ## Installation
 
