@@ -7,6 +7,9 @@ from homeassistant.components.device_tracker.config_entry import TrackerEntity
 from homeassistant.const import LENGTH_KILOMETERS
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import entity_platform
+from homeassistant.helpers.entity_platform import EntityPlatform
+from homeassistant.helpers.entity_registry import EntityRegistry, async_get as async_get_entity_registry
 from homeassistant.helpers.typing import StateType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import *
@@ -20,10 +23,16 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
     _LOGGER.debug("Setting up device_tracker with config data: %s", config_entry.data)
 
     coordinator = hass.data[DOMAIN][config_entry.entry_id][DATA_KEY_COORDINATOR]
-    entity_manager = GreengoEntityManager(async_add_entities, coordinator)
+    entity_manager = GreengoEntityManager(
+        async_add_entities,
+        coordinator,
+        async_get_entity_registry(hass),
+        entity_platform.async_get_current_platform()
+    )
 
+    @callback
     def update_entities():
-        entity_manager.update_entities()
+        hass.async_create_task(entity_manager.update_entities())
 
     coordinator.async_add_listener(update_entities)
 
@@ -33,15 +42,24 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
 
 
 class GreengoEntityManager:
-    def __init__(self, async_add_entities, coordinator):
+    def __init__(self, async_add_entities, coordinator, entity_registry: EntityRegistry, platform: EntityPlatform):
         self.async_add_entities = async_add_entities
         self.coordinator = coordinator
+        self.entity_registry = entity_registry
+        self.platform = platform
         self.vehicles: dict = {}
 
-    def update_entities(self):
+    async def update_entities(self):
         new_vehicles = self.coordinator.data
 
         to_add = set(new_vehicles) - set(self.vehicles)  # Diff of vehicle IDs
+        to_remove = set(self.vehicles) - set(new_vehicles)  # Diff of vehicle IDs
+
+        await self._add_entities(to_add)
+        await self._remove_entities(to_remove)
+        self.vehicles = new_vehicles
+
+    async def _add_entities(self, to_add: set):
         if to_add and self.vehicles:
             _LOGGER.debug("Adding %d new vehicles after update: %s", len(to_add), to_add)
 
@@ -49,7 +67,15 @@ class GreengoEntityManager:
                 GreengoTrackerEntity(self.coordinator, vehicle_id) for vehicle_id in to_add
             )
 
-        self.vehicles = new_vehicles
+    async def _remove_entities(self, to_remove: set):
+        for vehicle_id in to_remove:
+            plate_number = self.vehicles[vehicle_id]["plate_number"]
+            entity_id = f"device_tracker.greengo_{plate_number.lower()}"
+            _LOGGER.debug("Removing entity %s (id=%s) because it's missing from API response.", plate_number, entity_id)
+
+            if self.entity_registry.async_get(entity_id):
+                await self.platform.async_remove_entity(entity_id)
+                self.entity_registry.async_remove(entity_id)
 
 
 class GreengoTrackerEntity(CoordinatorEntity, TrackerEntity):
@@ -67,8 +93,9 @@ class GreengoTrackerEntity(CoordinatorEntity, TrackerEntity):
             _ = self._vehicle()
             self.async_write_ha_state()  # Continue with update
         except KeyError:
-            _LOGGER.debug("Vehicle %s is missing from API response. Removing its entity.", self.vehicle_id)
-            self._remove()
+            # Vehicle is missing from API response, but it's okay. GreenGoEntityManager will be notified and it
+            # will remove the entity completely
+            pass
 
     @property
     def unique_id(self):
@@ -130,8 +157,3 @@ class GreengoTrackerEntity(CoordinatorEntity, TrackerEntity):
 
     def _vehicle(self) -> dict:
         return self.coordinator.data[self.vehicle_id]
-
-    def _remove(self):
-        """Remove itself when the vehicle is no longer present in the API response."""
-
-        self.hass.async_create_task(self.async_remove(force_remove=True))
