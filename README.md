@@ -13,6 +13,7 @@ Custom component for [Home Assistant](https://homeassistant.io) that integrates 
 
 ## Features
 
+- Supported cities: Budapest, Prague
 - Display vehicles as `device_tracker` entities on map
 - Filter for vehicles in a zone with a given radius (around your home preferably)
 - Sensors
