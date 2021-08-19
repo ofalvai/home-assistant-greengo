@@ -12,7 +12,8 @@
                     "update_interval": "Update interval (min)",
                     "zone_lat": "Zone latitude",
                     "zone_long": "Zone longitude",
-                    "zone_radius": "Zone radius (km)"
+                    "zone_radius": "Zone radius (km)",
+                    "city": "City"
                 }
             }
         }

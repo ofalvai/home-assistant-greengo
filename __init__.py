@@ -11,7 +11,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from .client import GreengoClient, Vehicle
-from .client.model import VehicleID
+from .client.model import VehicleID, City
 from .const import *
 from .device_tracker import GreengoTrackerEntity
 
@@ -25,9 +25,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     radius = config_entry.data[CONF_KEY_ZONE_RADIUS_KM]
     latitude = config_entry.data[CONF_KEY_ZONE_LAT]
     longitude = config_entry.data[CONF_KEY_ZONE_LONG]
+    city = City.get_by_label(config_entry.data.get(CONF_KEY_CITY, CONF_DEFAULT_CITY))
 
     session = async_get_clientsession(hass)
-    client = GreengoClient(session)
+    client = GreengoClient(session, city)
 
     async def update_vehicles() -> dict[VehicleID, Vehicle]:
         try:

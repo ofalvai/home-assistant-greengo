@@ -1,4 +1,26 @@
 from dataclasses import dataclass
+from enum import Enum
+
+
+class City(Enum):
+    BUDAPEST = ("Budapest", "hu")
+    PRAGUE = ("Prague", "cz")
+
+    def __init__(self, label: str, api_code: str):
+        self.label = label
+        self.api_code = api_code
+
+    @classmethod
+    def list(cls) -> list[str]:
+        return [c.label for c in City]
+
+    @classmethod
+    def get_by_label(cls, label: str):
+        for city in cls:
+            if city.label == label:
+                return city
+        raise ValueError
+
 
 VehicleID = int
 

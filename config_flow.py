@@ -10,6 +10,7 @@ from homeassistant import config_entries
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import config_validation as cv
+from .client.model import City
 
 from .const import *
 
@@ -18,6 +19,7 @@ _LOGGER = logging.getLogger(__name__)
 STEP_DATA_SCHEMA = vol.Schema({
     vol.Required(CONF_KEY_ZONE_LAT, default=CONF_DEFAULT_ZONE_LAT): cv.latitude,
     vol.Required(CONF_KEY_ZONE_LONG, default=CONF_DEFAULT_ZONE_LONG): cv.longitude,
+    vol.Required(CONF_KEY_CITY, default=CONF_DEFAULT_CITY): vol.In(City.list()),
     vol.Required(CONF_KEY_ZONE_RADIUS_KM, default=CONF_DEFAULT_ZONE_RADIUS_KM): vol.All(vol.Coerce(int),
                                                                                         vol.Range(min=1)),
     vol.Required(CONF_KEY_UPDATE_INTERVAL_MIN, default=CONF_DEFAULT_UPDATE_INTERVAL_MIN): vol.All(vol.Coerce(int),

@@ -3,15 +3,14 @@ from typing import Optional
 
 from aiohttp import ClientSession
 
-from .model import Vehicle
-
-BASE_URL = "https://greengo.com/hu/divcontent.php"
+from .model import Vehicle, City
 
 
 class GreengoClient:
 
-    def __init__(self, session: ClientSession):
+    def __init__(self, session: ClientSession, city: City):
         self.session = session  # Session is the default HA session, shouldn't be cleaned up
+        self.city = city
 
     async def vehicles_in_zone(self, radius: int, latitude: float, longitude: float) -> list[Vehicle]:
         vehicle_list = await self._fetch_vehicles()
@@ -25,9 +24,10 @@ class GreengoClient:
         }
         headers = {
             "X-Requested-With": "XMLHttpRequest",
-            "Referer": "https://greengo.com/hu/?lang=HU"
+            "Referer": f"https://greengo.com/{self.city.api_code}/?lang=EN"
         }
-        async with self.session.get(BASE_URL, params=query_params, headers=headers) as resp:
+        url = f"https://greengo.com/{self.city.api_code}/divcontent.php"
+        async with self.session.get(url, params=query_params, headers=headers) as resp:
             resp_json = await resp.json(content_type="text/html")
             return [Vehicle.from_json(item) for item in resp_json]
 
