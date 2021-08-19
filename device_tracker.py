@@ -1,17 +1,18 @@
-from typing import Optional, Mapping, Any
-
 import logging
+from typing import Optional, Mapping, Any
 
 from homeassistant.components.device_tracker import SOURCE_TYPE_GPS
 from homeassistant.components.device_tracker.config_entry import TrackerEntity
-from homeassistant.const import LENGTH_KILOMETERS
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import LENGTH_KILOMETERS
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import entity_platform
 from homeassistant.helpers.entity_platform import EntityPlatform
 from homeassistant.helpers.entity_registry import EntityRegistry, async_get as async_get_entity_registry
 from homeassistant.helpers.typing import StateType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from .client import Vehicle
+from .client.model import VehicleID
 from .const import *
 
 _LOGGER = logging.getLogger(__name__)
@@ -47,7 +48,7 @@ class GreengoEntityManager:
         self.coordinator = coordinator
         self.entity_registry = entity_registry
         self.platform = platform
-        self.vehicles: dict = {}
+        self.vehicles: dict[VehicleID, Vehicle] = {}
 
     async def update_entities(self):
         new_vehicles = self.coordinator.data
@@ -59,7 +60,7 @@ class GreengoEntityManager:
         await self._remove_entities(to_remove)
         self.vehicles = new_vehicles
 
-    async def _add_entities(self, to_add: set):
+    async def _add_entities(self, to_add: set[VehicleID]):
         if to_add and self.vehicles:
             _LOGGER.debug("Adding %d new vehicles after update: %s", len(to_add), to_add)
 
@@ -67,9 +68,9 @@ class GreengoEntityManager:
                 GreengoTrackerEntity(self.coordinator, vehicle_id) for vehicle_id in to_add
             )
 
-    async def _remove_entities(self, to_remove: set):
+    async def _remove_entities(self, to_remove: set[VehicleID]):
         for vehicle_id in to_remove:
-            plate_number = self.vehicles[vehicle_id]["plate_number"]
+            plate_number = self.vehicles[vehicle_id].plate_number
             entity_id = f"device_tracker.greengo_{plate_number.lower()}"
             _LOGGER.debug("Removing entity %s (id=%s) because it's missing from API response.", plate_number, entity_id)
 
@@ -81,10 +82,10 @@ class GreengoEntityManager:
 class GreengoTrackerEntity(CoordinatorEntity, TrackerEntity):
     """Representation of a Sensor."""
 
-    def __init__(self, coordinator, vehicle_id: str):
+    def __init__(self, coordinator, vehicle_id: VehicleID):
         """Pass coordinator to CoordinatorEntity."""
         super().__init__(coordinator)
-        self.vehicle_id = vehicle_id
+        self.vehicle_id: VehicleID = vehicle_id
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -105,12 +106,12 @@ class GreengoTrackerEntity(CoordinatorEntity, TrackerEntity):
     @property
     def name(self):
         """Return the name of the sensor."""
-        return 'GreenGo ' + self._vehicle()["plate_number"]
+        return 'GreenGo ' + self._vehicle().plate_number
 
     @property
     def state(self) -> StateType:
         """Return the remaining range (in kilometers) of the vehicle."""
-        return int(self._vehicle()["estimated_km"])
+        return self._vehicle().estimated_km
 
     @property
     def unit_of_measurement(self) -> Optional[str]:
@@ -119,12 +120,12 @@ class GreengoTrackerEntity(CoordinatorEntity, TrackerEntity):
     @property
     def latitude(self) -> float:
         """The latitude coordinate of the vehicle."""
-        return float(self._vehicle()["gps_lat"])
+        return self._vehicle().latitude
 
     @property
     def longitude(self) -> float:
         """	The longitude coordinate of the vehicle."""
-        return float(self._vehicle()["gps_long"])
+        return self._vehicle().longitude
 
     @property
     def source_type(self):
@@ -138,22 +139,22 @@ class GreengoTrackerEntity(CoordinatorEntity, TrackerEntity):
     def extra_state_attributes(self) -> Optional[Mapping[str, Any]]:
         return {
             "Estimated range (km)": self.state,
-            "Plate number": self._vehicle()["plate_number"],
+            "Plate number": self._vehicle().plate_number,
             "Address": self.location_name
         }
 
     @property
     def entity_picture(self) -> Optional[str]:
-        original_url: str = self._vehicle()["icon"]
+        original_url = self._vehicle().icon_url
         return original_url.replace("mapicons/v2/32/", "mapicons/v2/64/")
 
     @property
     def battery_level(self):
-        return self._vehicle()["battery_level"]
+        return self._vehicle().battery_level
 
     @property
     def location_name(self) -> str:
-        return self._vehicle()["address"]
+        return self._vehicle().address
 
-    def _vehicle(self) -> dict:
+    def _vehicle(self) -> Vehicle:
         return self.coordinator.data[self.vehicle_id]

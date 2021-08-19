@@ -10,8 +10,8 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from .client import GreengoClient
-
+from .client import GreengoClient, Vehicle
+from .client.model import VehicleID
 from .const import *
 from .device_tracker import GreengoTrackerEntity
 
@@ -29,12 +29,12 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     session = async_get_clientsession(hass)
     client = GreengoClient(session)
 
-    async def update_vehicles():
+    async def update_vehicles() -> dict[VehicleID, Vehicle]:
         try:
             async with async_timeout.timeout(10):
                 vehicle_list = await client.vehicles_in_zone(radius, latitude, longitude)
                 _LOGGER.debug("Fetched %d vehicles from API", len(vehicle_list))
-                return {v["vehicle_id"]: v for v in vehicle_list}
+                return {v.vehicle_id: v for v in vehicle_list}
         except Exception as err:
             raise UpdateFailed(f"Error communicating with API: {err}")
 

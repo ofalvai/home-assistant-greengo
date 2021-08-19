@@ -1,7 +1,9 @@
-import json
 import math
+from typing import Optional
 
 from aiohttp import ClientSession
+
+from .model import Vehicle
 
 BASE_URL = "https://greengo.com/hu/divcontent.php"
 
@@ -11,12 +13,12 @@ class GreengoClient:
     def __init__(self, session: ClientSession):
         self.session = session  # Session is the default HA session, shouldn't be cleaned up
 
-    async def vehicles_in_zone(self, radius: int, latitude: float, longitude: float) -> list:
+    async def vehicles_in_zone(self, radius: int, latitude: float, longitude: float) -> list[Vehicle]:
         vehicle_list = await self._fetch_vehicles()
 
         return [v for v in vehicle_list if self._within_radius(v, radius, latitude, longitude)]
 
-    async def _fetch_vehicles(self) -> list:
+    async def _fetch_vehicles(self) -> list[Vehicle]:
         query_params = {
             "funct": "callAPI",
             "APIname": "getVehicleList"
@@ -26,23 +28,21 @@ class GreengoClient:
             "Referer": "https://greengo.com/hu/?lang=HU"
         }
         async with self.session.get(BASE_URL, params=query_params, headers=headers) as resp:
-            resp_data = await resp.read()
-            # Content type is incorrectly set to text/html, so we parse manually to avoid warning
-            resp_json = json.loads(resp_data)
-            return resp_json
+            resp_json = await resp.json(content_type="text/html")
+            return [Vehicle.from_json(item) for item in resp_json]
 
-    def _within_radius(self, vehicle, radius: int, latitude: float, longitude: float) -> bool:
-        vehicle_position = (float(vehicle["gps_lat"]), float(vehicle["gps_long"]))
+    def _within_radius(self, vehicle: Vehicle, radius: int, latitude: float, longitude: float) -> bool:
+        vehicle_position = (vehicle.latitude, vehicle.longitude)
         vehicle_distance = self._distance(vehicle_position, (latitude, longitude))
         return vehicle_distance <= radius
 
     @staticmethod
-    def nearest(vehicle_list, zone: tuple):
+    def nearest(vehicles: list[Vehicle], zone: tuple) -> Optional[Vehicle]:
         sorted_vehicles = sorted(
-            vehicle_list,
-            key=lambda v: GreengoClient._distance((float(v["gps_lat"]), float(v["gps_long"])), zone),
+            vehicles,
+            key=lambda v: GreengoClient._distance((v.latitude, v.longitude), zone),
         )
-        if sorted_vehicles is not None:
+        if sorted_vehicles:
             return sorted_vehicles[0]
         else:
             return None

@@ -1,11 +1,13 @@
 from typing import Optional, Mapping, Any
 
-from . import GreengoClient
-from .const import *
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from . import GreengoClient
+from .client import Vehicle
+from .const import *
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities):
@@ -58,10 +60,9 @@ class GreengoClosestVehicleSensor(CoordinatorEntity, SensorEntity):
         self.zone_lat = zone_lat
         self.zone_long = zone_long
 
-    def _vehicle(self):
+    def _vehicle(self) -> Optional[Vehicle]:
         vehicles = list(self.coordinator.data.values())  # Dict of [id -> vehicle] turned to vehicle list
         return GreengoClient.nearest(vehicles, (self.zone_lat, self.zone_long))
-        # TODO: handle null case
 
     @property
     def name(self) -> str:
@@ -72,8 +73,11 @@ class GreengoClosestVehicleSensor(CoordinatorEntity, SensorEntity):
         return UNIQUE_ID_SENSOR_CLOSEST
 
     @property
-    def state(self) -> int:
-        return self._vehicle()["plate_number"]
+    def state(self) -> str:
+        try:
+            return self._vehicle().plate_number
+        except AttributeError:
+            return STATE_UNAVAILABLE
 
     @property
     def icon(self) -> str:
@@ -81,16 +85,22 @@ class GreengoClosestVehicleSensor(CoordinatorEntity, SensorEntity):
 
     @property
     def extra_state_attributes(self) -> Optional[Mapping[str, Any]]:
-        return {
-            "Plate number": self._vehicle()["plate_number"],
-            "Estimated range (km)": self._vehicle()["estimated_km"],
-            "Battery level": self._vehicle()["battery_level"],
-            "Address": self._vehicle()["address"],
-            "Latitude": float(self._vehicle()["gps_lat"]),
-            "Longitude": float(self._vehicle()["gps_long"]),
-        }
+        try:
+            return {
+                "Plate number": self._vehicle().plate_number,
+                "Estimated range (km)": self._vehicle().estimated_km,
+                "Battery level": self._vehicle().battery_level,
+                "Address": self._vehicle().address,
+                "Latitude": self._vehicle().latitude,
+                "Longitude": self._vehicle().longitude,
+            }
+        except AttributeError:
+            return None
 
     @property
     def entity_picture(self) -> Optional[str]:
-        original_url: str = self._vehicle()["icon"]
-        return original_url.replace("mapicons/v2/32/", "mapicons/v2/64/")
+        try:
+            original_url = self._vehicle().icon_url
+            return original_url.replace("mapicons/v2/32/", "mapicons/v2/64/")
+        except AttributeError:
+            return None
