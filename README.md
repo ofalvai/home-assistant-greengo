@@ -1,6 +1,6 @@
 # GreenGo Home Assistant component
 
-[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
 
 Custom component for [Home Assistant](https://homeassistant.io) that integrates [GreenGo](https://greengo.com) car-sharing data.
 
